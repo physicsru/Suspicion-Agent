@@ -96,12 +96,10 @@ class OpenAIGPT3_5TextDavinci003Settings(ModelSettings):
     llm = LLMSettings(type="openai", model_name="text-davinci-003", max_tokens=2500)
     embedding = EmbeddingSettings(type="openaiembeddings")
 
-# class Llama2_70b_Settings(ModelSettings):
-#     from transformers import LlamaForCausalLM, LlamaTokenizer
-#     type = "llama2-70b"
-#     tokenizer = LlamaTokenizer.from_pretrained("/groups/gcb50389/pretrained/llama2-HF/Llama-2-70b-hf")
-#     llm = LlamaForCausalLM.from_pretrained("/groups/gcb50389/pretrained/llama2-HF/Llama-2-70b-hf")
-#     embedding = EmbeddingSettings(type="openaiembeddings")
+class Llama2_7b_Settings(ModelSettings):
+    type = "llama2-7b"
+    llm = LLMSettings(type="llamav2", model_name="togethercomputer/Llama-2-7B-32K-Instruct", max_tokens=32000)
+    embedding = EmbeddingSettings(type="openaiembeddings")
 
 
 # ------------------------- Model settings registry ------------------------ #
@@ -110,7 +108,7 @@ model_setting_type_to_cls_dict: Dict[str, Type[ModelSettings]] = {
     "openai-gpt-4-32k-0613": OpenAIGPT432kSettings,
     "openai-gpt-3.5-turbo": OpenAIGPT3_5TurboSettings,
     "openai-gpt-3.5-text-davinci-003": OpenAIGPT3_5TextDavinci003Settings,
-    # "llama2-70b":Llama2_70b_Settings
+    "llama2-7b":Llama2_7b_Settings
 }
 
 
@@ -125,3 +123,4 @@ def load_model_setting(type: str) -> ModelSettings:
 def get_all_model_settings() -> List[str]:
     """Get all supported Embeddings"""
     return list(model_setting_type_to_cls_dict.keys())
+
