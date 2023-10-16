@@ -1,9 +1,8 @@
-from typing import Dict, List, Type, Optional
-
+from typing import Dict, List, Type, Optional, Sequence
+from typing_extensions import TypeAlias
 from langchain import chat_models, embeddings, llms
 from langchain.embeddings.base import Embeddings
 from langchain.llms.base import BaseLanguageModel
-
 from setting import EmbeddingSettings, LLMSettings
 from context import Context
 from setting import Settings
@@ -14,7 +13,7 @@ from pydantic import BaseModel, Extra, Field, root_validator
 from langchain.llms.base import LLM
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
-
+from langchain.schema.output import LLMResult
 from typing import Any, Dict, List, Optional, Mapping
 
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -23,29 +22,96 @@ from langchain.llms.base import LLM
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
-class Llama(BaseModel):
-    model_name: str
-    _tokenizer: AutoTokenizer = None
-    _model: AutoModelForCausalLM = None
+from typing import List, Optional, Dict, Any
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
+from pydantic import root_validator
+from langchain.schema.messages import AnyMessage, BaseMessage, get_buffer_string
+from langchain.schema.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    BaseMessageChunk,
+    ChatMessageChunk,
+    FunctionMessageChunk,
+    HumanMessage,
+    HumanMessageChunk,
+    SystemMessageChunk,
+)
 
+from langchain.schema import (
+    ChatGeneration,
+    ChatResult,
+    LLMResult,
+    PromptValue,
+    RunInfo,
+    Generation
+)
+
+
+
+
+class Llama(BaseLanguageModel):
+    model_name: str
+    llama_tokenizer: AutoTokenizer = Field(default=None)
+    llama_model: AutoModelForCausalLM = Field(default=None)
+    
+    
     class Config:
         arbitrary_types_allowed = True
+    
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+        print("initilization")
+        print(self.model_name)
+        self.setup_model_and_tokenizer()
+        print(f'_tokenizer: {self.llama_tokenizer}')  # logging statement
+        print(f'_model: {self.llama_model}')  # logging statement
 
-    @root_validator(pre=True)
-    def setup_model_and_tokenizer(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        # Load tokenizer and model
-        values['_tokenizer'] = AutoTokenizer.from_pretrained(values['model_name'])
-        values['_model'] = AutoModelForCausalLM.from_pretrained(
-            values['model_name'], trust_remote_code=True, torch_dtype=torch.float16
+
+    
+    def setup_model_and_tokenizer(self):
+        print("come there to build")
+        self.llama_tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.llama_model = AutoModelForCausalLM.from_pretrained(
+            self.model_name, trust_remote_code=True, torch_dtype=torch.float16
         )
-        return values
 
-    def __call__(self, prompt: str, stop: Optional[List[str]] = None) -> str:
-        input_ids = self._tokenizer.encode(prompt, return_tensors="pt")
+    
+    # @root_validator(pre=True)
+    # def setup_model_and_tokenizer(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    #     # Load tokenizer and model
+    #     values['_tokenizer'] = AutoTokenizer.from_pretrained(values['model_name'])
+    #     values['_model'] = AutoModelForCausalLM.from_pretrained(
+    #         values['model_name'], trust_remote_code=True, torch_dtype=torch.float16
+    #     )
+    #     return values
+    
+    # {
+    # "id": "chatcmpl-123",
+    # "object": "chat.completion",
+    # "created": 1677652288,
+    # "model": "gpt-3.5-turbo-0613",
+    # "choices": [{
+    #     "index": 0,
+    #     "message": {
+    #     "role": "assistant",
+    #     "content": "\n\nHello there, how may I assist you today?",
+    #     },
+    #     "finish_reason": "stop"
+    # }],
+    # "usage": {
+    #     "prompt_tokens": 9,
+    #     "completion_tokens": 12,
+    #     "total_tokens": 21
+    # }
+    # }
+
+
+    def generate_text(self, input_ids):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self._model = self._model.to(device)
+        self.llama_model = self.llama_model.to(device)
         input_ids = input_ids.to(device)
-
         gen_params = {
             'max_length': min(len(input_ids) * 2, 32000),
             'temperature': 0.7,
@@ -53,19 +119,118 @@ class Llama(BaseModel):
             'top_p': 0.7,
             'top_k': 50
         }
-
-        output = self._model.generate(input_ids, **gen_params)
-        output_text = self._tokenizer.decode(output[0], skip_special_tokens=True)
+        output = self.llama_model.generate(input_ids, **gen_params)
+        output_text = self.llama_tokenizer.decode(output[0], skip_special_tokens=True)
         return output_text
+
+    def generate_prompt(self, prompts: List[str], 
+        stop: Optional[List[str]] = None,
+        **kwargs: Any,) -> Dict[str, str]:
+        # This method assumes that each prompt in the list will receive a separate response.
+        # It returns a dictionary where the keys are the prompts and the values are the generated responses.
+        responses = {}
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        for prompt in prompts:
+            #print(type(prompt), repr(prompt))
+            #print(prompt)
+            print(len(prompt.text))
+            #print(prompt)
+            input_ids = self.llama_tokenizer.encode(prompt.text, return_tensors="pt")
+            input_ids = input_ids.to(device)
+            self.llama_model = self.llama_model.to(device)
+            output = self.llama_model.generate(
+                input_ids,
+                max_length=min(32000, 2 * len(input_ids[0])),  # or another value based on your needs
+                temperature=0.7,
+                repetition_penalty=1.1,
+                top_p=0.7,
+                top_k=50
+            )
+            #print(len(input_ids[0]), type(output))
+            #print(repr(input_ids))
+            output_text = self.llama_tokenizer.decode(output[0], skip_special_tokens=True)
+            #{"token_usage": overall_token_usage, "model_name": self.model_name}for res in response["choices"]:
+            # message = convert_dict_to_message(res["message"])
+            # gen = ChatGeneration(
+            #     message=message,
+            #     generation_info=dict(finish_reason=res.get("finish_reason")),
+            # )
+            #ge = Generation(text = output_text, generation_info=None)
+            #gen = [[ChatGeneration(message=BaseMessage(content = text, type = "model_returen"), generation_info=dict(finish_reason="finish_reason"))]]
+            #gen = list(list({"text": output_text, "message": prompts}))
+            gen = [[ChatGeneration(message=BaseMessage(content = output_text, type = "model_return"), generation_info=dict(finish_reason="stop"))]]
+            llmoutput = {"token_usage": len(input_ids[0]) + len(output[0]), "model_name": self.model_name}
+            responses = LLMResult(generations = gen, llm_output = llmoutput)
+        return responses
+    
+    async def agenerate_prompt(self, prompts: List[str], *args, **kwargs) -> Dict[str, str]:
+        # This method simply wraps the synchronous generate_prompt method for now,
+        # as the provided code does not include asynchronous operations.
+        return self.generate_prompt(prompts, *args, **kwargs)
+
+    def invoke(self, input: str, *args, **kwargs) -> str:
+        # This method takes a single input string and returns a single generated response string.
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        input_ids = self.llama_tokenizer.encode(input, return_tensors="pt")
+        input_ids = input_ids.to(device)
+        self.llama_tokenizer = self.llama_tokenizer.to(device)
+        output = self.llama_tokenizer.generate(
+            input_ids,
+            max_length=min(32000, 2 * len(input_ids)),  # or another value based on your needs
+            temperature=0.7,
+            repetition_penalty=1.1,
+            top_p=0.7,
+            top_k=50
+        )
+        output_text = self.llama_tokenizer.decode(output[0], skip_special_tokens=True)
+        return output_text
+
+
+    def predict(self, text: str, *, stop: Optional[Sequence[str]] = None, **kwargs: Any) -> str:
+        input_ids = self.llama_tokenizer.encode(text, return_tensors="pt")
+        return self.generate_text(input_ids)
+
+    def predict_messages(
+        self,
+        messages: List[BaseMessage],
+        *,
+        stop: Optional[Sequence[str]] = None,
+        **kwargs: Any
+    ) -> BaseMessage:
+        text = " ".join([message.content for message in messages])
+        response_text = self.predict(text, stop=stop, **kwargs)
+        return AIMessage(content=response_text)
+
+    async def apredict(
+        self, text: str, *, stop: Optional[Sequence[str]] = None, **kwargs: Any
+    ) -> str:
+        return self.predict(text, stop=stop, **kwargs)
+
+    async def apredict_messages(
+        self,
+        messages: List[BaseMessage],
+        *,
+        stop: Optional[Sequence[str]] = None,
+        **kwargs: Any
+    ) -> BaseMessage:
+        return self.predict_messages(messages, stop=stop, **kwargs)
+
+    @property
+    def InputType(self) -> TypeAlias:
+        return str  # Assuming the input type is a string for this model.
+
+    @property
+    def _llm_type(self) -> str:
+        return "Llama"
 
     @property
     def _identifying_params(self) -> Dict[str, Any]:
         return {
-            'tokenizer_model_name': self.tokenizer_model_name,
             'model_name': self.model_name,
-            'trust_remote_code': self.trust_remote_code,
-            'torch_dtype': self.torch_dtype
         }
+
+    # Implement other abstract methods from BaseLanguageModel as needed.
+
 
 
 
@@ -157,4 +322,3 @@ def load_embedding_from_config(config: EmbeddingSettings) -> Embeddings:
 def get_all_embeddings() -> List[str]:
     """Get all supported Embeddings"""
     return list(embedding_type_to_cls_dict.keys())
-

@@ -146,8 +146,9 @@ class SuspicionAgent(BaseModel):
             valid_action_list=valid_action_list
         )
 
-
+        
         plan_prediction_chain = LLMChain(llm=self.llm, prompt=prompt)
+        
         self.plan = plan_prediction_chain.run(**kwargs)
         self.plan = self.plan.strip()
 
@@ -330,8 +331,11 @@ class SuspicionAgent(BaseModel):
             rule=self.rule
 
         )
-
+        
         belief_prediction_chain = LLMChain(llm=self.llm, prompt=prompt)
+        # print("get_short_memory_summary ", type(LLMChain))
+        # print(type(belief_prediction_chain))
+        # print(dir(belief_prediction_chain))
         self.belief = belief_prediction_chain.run(**kwargs)
         self.belief = self.belief.strip()
         return self.belief.strip()
@@ -360,6 +364,9 @@ class SuspicionAgent(BaseModel):
             observation_rule=self.observation_rule
         )
         obs_prediction_chain = LLMChain(llm=self.llm, prompt=prompt)
+        # print("convert_obs ", type(LLMChain))
+        # print(type(obs_prediction_chain))
+        # print(dir(obs_prediction_chain))
         self.read_observation = obs_prediction_chain.run(**kwargs)
         self.read_observation = self.read_observation.strip()
         return self.read_observation
@@ -402,6 +409,7 @@ class SuspicionAgent(BaseModel):
 
     def make_act(self, observation: str,opponent_name: str, player_index:int,valid_action_list: List, verbose_print:bool,game_idx:int,round:int,bot_short_memory:List, bot_long_memory:List, console,log_file_name='', mode='second_tom',no_highsight_obs=False) -> Tuple[bool, str]:
         readable_text_amy_obs = self.convert_obs(observation, opponent_name, player_index, valid_action_list)
+        print("verbose_print = ", verbose_print)
         if  verbose_print:
             console.print('readable_text_obs: ', style="red")
             print(readable_text_amy_obs)

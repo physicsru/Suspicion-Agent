@@ -46,6 +46,7 @@ def run(args):
         return
     # Get inputs from the user
     agent_count = args.agents_num
+    print("args.agents_num = ", args.agents_num)
     # if agent_count < 2:
     #     Console.print("Please config at least 2 agents, exiting", style="red")
     #     return
@@ -148,6 +149,7 @@ def run(args):
                 if round == 0:
                     start_idx = idx
                 if args.user_index == idx and args.user:
+                    print("that branch")
                     console.print(env.get_state(env.get_player_id())['raw_obs'], style="green")
                     act,_ = rule_model.eval_step(env.get_state(env.get_player_id()))
                     act = env._decode_action(act)
@@ -167,6 +169,7 @@ def run(args):
                          f"{ctx.robot_agents[args.user_index].name} have the observation: {env.get_state(env.get_player_id())['raw_obs']}, and try to take action: {act}.")
 
                 else:
+                    print("this branch")
                     amy = ctx.robot_agents[idx]
                     amy_index = env.get_player_id()
                     amy_obs = env.get_state(env.get_player_id())['raw_obs']
@@ -179,11 +182,11 @@ def run(args):
 
                     if  args.verbose_print:
                         console.print(amy_obs, style="green")
-
+                    print("make_act function")
                     act, comm, bot_short_memory, bot_long_memory = amy.make_act(amy_obs,opponent_name, amy_index,valid_action_list, verbose_print= args.verbose_print,
                                                                                 game_idx = game_idx,round=round,bot_short_memory=bot_short_memory, bot_long_memory=bot_long_memory, console=console,
                                                                                 log_file_name=log_file_name,mode=args.mode)
-        
+                    print("end")
 
                 env.step(act,raw_action=True)
                 round += 1
@@ -241,5 +244,6 @@ if __name__ == "__main__":
     parser.add_argument("--no_hindsight_obs", action="store_true")
 
     args = parser.parse_args()
+    print("--verbose_print ", args.verbose_print)
     run(args)
 
