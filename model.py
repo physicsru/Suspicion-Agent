@@ -72,11 +72,14 @@ class Llama(BaseLanguageModel):
     
     def setup_model_and_tokenizer(self):
         print("come there to build")
-        self.llama_tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        print("tokenizer name: ", self.model_name)
+        self.llama_tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
+        # self.llama_model = AutoModelForCausalLM.from_pretrained(
+        #     self.model_name, trust_remote_code=True, torch_dtype=torch.float16, device_map="auto"
+        # )
         self.llama_model = AutoModelForCausalLM.from_pretrained(
             self.model_name, trust_remote_code=True, torch_dtype=torch.float16
         )
-
     
     # @root_validator(pre=True)
     # def setup_model_and_tokenizer(cls, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -113,7 +116,7 @@ class Llama(BaseLanguageModel):
         self.llama_model = self.llama_model.to(device)
         input_ids = input_ids.to(device)
         gen_params = {
-            'max_length': min(len(input_ids) * 2, 32000),
+            'max_length': min(len(input_ids) * 2, 10000),
             'temperature': 0.7,
             'repetition_penalty': 1.1,
             'top_p': 0.7,
@@ -123,24 +126,35 @@ class Llama(BaseLanguageModel):
         output_text = self.llama_tokenizer.decode(output[0], skip_special_tokens=True)
         return output_text
 
+
+#llama-7b-32k 32000
+#agent-lm-7b 10000
+#agent-lm-13b 5000
     def generate_prompt(self, prompts: List[str], 
         stop: Optional[List[str]] = None,
-        **kwargs: Any,) -> Dict[str, str]:
+        **kwargs: Any,) -> LLMResult:
         # This method assumes that each prompt in the list will receive a separate response.
         # It returns a dictionary where the keys are the prompts and the values are the generated responses.
         responses = {}
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        #print(prompts)
+        #print(len(prompts))
         for prompt in prompts:
             #print(type(prompt), repr(prompt))
             #print(prompt)
-            print(len(prompt.text))
+            #print(len(prompt.text))
             #print(prompt)
             input_ids = self.llama_tokenizer.encode(prompt.text, return_tensors="pt")
-            input_ids = input_ids.to(device)
+            sliced_input_ids = input_ids[0][:4000].unsqueeze(0)
+            input_ids = sliced_input_ids.to(device)
+            #input_ids[0] = input_ids[0][:32000]
+            #input_ids = input_ids.to(device)
             self.llama_model = self.llama_model.to(device)
+            #len(input_ids[0])
+            print("len(input_ids[0]) = ", len(input_ids[0]))
             output = self.llama_model.generate(
                 input_ids,
-                max_length=min(32000, 2 * len(input_ids[0])),  # or another value based on your needs
+                max_length=min(5000, 2 * len(input_ids[0])),  # or another value based on your needs
                 temperature=0.7,
                 repetition_penalty=1.1,
                 top_p=0.7,
@@ -149,6 +163,8 @@ class Llama(BaseLanguageModel):
             #print(len(input_ids[0]), type(output))
             #print(repr(input_ids))
             output_text = self.llama_tokenizer.decode(output[0], skip_special_tokens=True)
+            #output_text = output_text.detach().cpu().numpy()
+            print(f"input len {len(input_ids[0])}, output len {len(output[0])}")
             #{"token_usage": overall_token_usage, "model_name": self.model_name}for res in response["choices"]:
             # message = convert_dict_to_message(res["message"])
             # gen = ChatGeneration(
@@ -275,6 +291,11 @@ llm_type_to_cls_dict: Dict[str, Type[BaseLanguageModel]] = {
     "chatopenai": chat_models.ChatOpenAI,
     "openai": llms.OpenAI,
     "llamav2": Llama,
+    "agentlm-7b": Llama,
+    "agentlm-13b": Llama,
+    "agentlm-13b": Llama,
+    "zerooneai-6b": Llama,
+    "zerooneai-34b": Llama,
 }
 
 # ------------------------- Embedding models registry ------------------------ #
@@ -290,7 +311,7 @@ def load_llm_from_config(config: LLMSettings) -> BaseLanguageModel:
     """Load LLM from Config."""
     config_dict = config.dict()
     config_type = config_dict.pop("type")
-
+    print("here")
     if config_type not in llm_type_to_cls_dict:
         raise ValueError(f"Loading {config_type} LLM not supported")
     print("load here")

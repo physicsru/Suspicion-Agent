@@ -100,15 +100,45 @@ class Llama2_7b_Settings(ModelSettings):
     type = "llama2-7b"
     llm = LLMSettings(type="llamav2", model_name="togethercomputer/Llama-2-7B-32K-Instruct", max_tokens=32000)
     embedding = EmbeddingSettings(type="openaiembeddings")
+    
+class agentlm_7b_Settings(ModelSettings):
+    type = "agentlm-7b"
+    llm = LLMSettings(type="agentlm-7b", model_name="THUDM/agentlm-7b", max_tokens=32000)
+    embedding = EmbeddingSettings(type="openaiembeddings")
+
+class agentlm_13b_Settings(ModelSettings):
+    type = "agentlm-13b"
+    llm = LLMSettings(type="agentlm-13b", model_name="THUDM/agentlm-13b", max_tokens=32000)
+    embedding = EmbeddingSettings(type="openaiembeddings")
+    
+class chatglm3_6b_Settings(ModelSettings):
+    type = "chatglm3-6b"
+    llm = LLMSettings(type="chatglm3-6b", model_name="THUDM/chatglm3-6b-32k", max_tokens=32000)
+    embedding = EmbeddingSettings(type="openaiembeddings")
 
 
+class zerooneai_6b_Settings(ModelSettings):
+    type = "zerooneai-6b"
+    llm = LLMSettings(type="zerooneai-6b", model_name="01-ai/Yi-6B", max_tokens=32000)
+    embedding = EmbeddingSettings(type="openaiembeddings")
+    
+class zerooneai_34b_Settings(ModelSettings):
+    type = "zerooneai-34b"
+    llm = LLMSettings(type="zerooneai-34b", model_name="01-ai/Yi-34B", max_tokens=32000)
+    embedding = EmbeddingSettings(type="openaiembeddings")
+#THUDM/chatglm3-6b
 # ------------------------- Model settings registry ------------------------ #
 model_setting_type_to_cls_dict: Dict[str, Type[ModelSettings]] = {
     "openai-gpt-4-0613": OpenAIGPT4Settings,
     "openai-gpt-4-32k-0613": OpenAIGPT432kSettings,
     "openai-gpt-3.5-turbo": OpenAIGPT3_5TurboSettings,
     "openai-gpt-3.5-text-davinci-003": OpenAIGPT3_5TextDavinci003Settings,
-    "llama2-7b":Llama2_7b_Settings
+    "llama2-7b": Llama2_7b_Settings,
+    "agentlm-7b": agentlm_7b_Settings, 
+    "agentlm-13b": agentlm_13b_Settings, 
+    "chatglm3-6b": chatglm3_6b_Settings,
+    "zerooneai-6b": zerooneai_6b_Settings,
+    "zerooneai-34b": zerooneai_34b_Settings,
 }
 
 

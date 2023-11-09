@@ -44,6 +44,7 @@ def run(args):
     if res != "OK":
         console.print(res, style="red")
         return
+    print("here111")
     # Get inputs from the user
     agent_count = args.agents_num
     print("args.agents_num = ", args.agents_num)
