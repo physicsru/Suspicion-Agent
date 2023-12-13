@@ -122,10 +122,21 @@ class zerooneai_6b_Settings(ModelSettings):
     llm = LLMSettings(type="zerooneai-6b", model_name="01-ai/Yi-6B", max_tokens=32000)
     embedding = EmbeddingSettings(type="openaiembeddings")
     
-class zerooneai_34b_Settings(ModelSettings):
-    type = "zerooneai-34b"
-    llm = LLMSettings(type="zerooneai-34b", model_name="01-ai/Yi-34B", max_tokens=32000)
+class Orca_2_13b_Settings(ModelSettings):
+    type = "Orca-2-13b"
+    llm = LLMSettings(type="Orca-2-13b", model_name="microsoft/Orca-2-13b", max_tokens=4096)
     embedding = EmbeddingSettings(type="openaiembeddings")
+    
+class Orca_2_7b_Settings(ModelSettings):
+    type = "Orca-2-7b"
+    llm = LLMSettings(type="Orca-2-7b", model_name="microsoft/Orca-2-7b", max_tokens=4096)
+    embedding = EmbeddingSettings(type="openaiembeddings")
+    
+class zephyr_7b_beta_settings(ModelSettings):
+    type = "zephyr-7b-beta"
+    llm = LLMSettings(type="zephyr-7b-beta", model_name="HuggingFaceH4/zephyr-7b-beta", max_tokens=4096)
+    embedding = EmbeddingSettings(type="openaiembeddings")
+    
 #THUDM/chatglm3-6b
 # ------------------------- Model settings registry ------------------------ #
 model_setting_type_to_cls_dict: Dict[str, Type[ModelSettings]] = {
@@ -138,7 +149,9 @@ model_setting_type_to_cls_dict: Dict[str, Type[ModelSettings]] = {
     "agentlm-13b": agentlm_13b_Settings, 
     "chatglm3-6b": chatglm3_6b_Settings,
     "zerooneai-6b": zerooneai_6b_Settings,
-    "zerooneai-34b": zerooneai_34b_Settings,
+    "Orca-2-7b": Orca_2_7b_Settings,
+    "Orca-2-13b": Orca_2_13b_Settings,
+    "zephyr-7b-beta": zephyr_7b_beta_settings, 
 }
 
 

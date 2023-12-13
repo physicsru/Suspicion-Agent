@@ -73,23 +73,23 @@ class Llama(BaseLanguageModel):
     def setup_model_and_tokenizer(self):
         print("come there to build")
         print("tokenizer name: ", self.model_name)
-        self.llama_tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=False, from_slow=True) #, add_eos_token=True, trust_remote_code=True)
-        print(self.llama_tokenizer)
-        self.llama_model = AutoModelForCausalLM.from_pretrained(
-           self.model_name, device_map="auto", torch_dtype=torch.float16, use_flash_attention_2=True)
+        #self.llama_tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=False, from_slow=True) #, add_eos_token=True, trust_remote_code=True)
+        #print(self.llama_tokenizer)
+        #self.llama_model = AutoModelForCausalLM.from_pretrained(
+        #    self.model_name, device_map="auto", torch_dtype=torch.float16,
             #self.model_name, trust_remote_code=True, torch_dtype=torch.float16, device_map="auto"
-        
-        #local_model_path = '/share4/ru.wang/orca2_1epoch_small_lr/'
-        #self.llama_tokenizer = AutoTokenizer.from_pretrained(local_model_path, from_slow=True)
-        #self.llama_tokenizer.pad_token = '<\s>'
-        #assert self.llama_tokenizer.pad_token_id == 32000
+        #)
+        local_model_path = '/share4/ru.wang/orca2_1epoch_small_lr/'
+        self.llama_tokenizer = AutoTokenizer.from_pretrained(local_model_path, from_slow=True)
+        self.llama_tokenizer.pad_token = '[PAD]'
+        assert self.llama_tokenizer.pad_token_id == 32000
         
         # self.llama_model = AutoModelForCausalLM.from_pretrained(
         #     self.model_name, trust_remote_code=True, torch_dtype=torch.float16
         # )
-        #print("load local weight")
+        print("load local weight")
         #'/work/gu14/k36037/code/llama-recipes/finetuned_7b'
-        #self.llama_model = AutoModelForCausalLM.from_pretrained(local_model_path, torch_dtype=torch.float16, device_map = "auto", use_flash_attention_2=True)
+        self.llama_model = AutoModelForCausalLM.from_pretrained(local_model_path, torch_dtype=torch.float16, device_map = "auto", use_flash_attention_2=True)
     
     # @root_validator(pre=True)
     # def setup_model_and_tokenizer(cls, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -130,7 +130,7 @@ class Llama(BaseLanguageModel):
         gen_params = {
             'max_length': min(len(input_ids) * 2.5, 4500),
             'temperature': 0.9,
-            'repetition_penalty': 1.0,
+            'repetition_penalty': 1.1,
             'top_p': 0.7,
             'top_k': 50
         }
@@ -156,17 +156,13 @@ class Llama(BaseLanguageModel):
             #print(prompt)
             #print(len(prompt.text))
             #print(prompt)    
-            input_ids = self.llama_tokenizer.encode(prompt.text, return_tensors="pt", max_length=4096, truncation=True)
+            input_ids = self.llama_tokenizer.encode(self.llama_tokenizer.bos_token + prompt.text, return_tensors="pt", max_length=4096, truncation=True)
             #input_ids = encoding['input_ids'] 
             sliced_input_ids = input_ids[0][:4096].unsqueeze(0)
             
             input_ids = sliced_input_ids.to(device)
-            #attention_mask = len(input_ids[0]) * [1]
-            attention_mask = [1] * len(input_ids[0])
-            #attention_mask += [0] * (4096 - len(input_ids[0]))  # Pad the remaining with zeros
-            #attention_mask = torch.tensor(attention_mask).to(device).unsqueeze(0)
-            
-                    #attention_mask = attention_mask.to(device) 
+            attention_mask = len(input_ids[0]) * [1]
+            #attention_mask = attention_mask.to(device) 
             attention_mask = torch.tensor(attention_mask).to(device).unsqueeze(0)
             #input_ids[0] = input_ids[0][:32000]
             #input_ids = input_ids.to(device)
@@ -190,10 +186,9 @@ class Llama(BaseLanguageModel):
             output = self.llama_model.generate(
                 input_ids,
                 attention_mask = attention_mask,
-                pad_token_id= self.llama_tokenizer.eos_token_id, #self.llama_tokenizer.pad_token_id,
                 max_length=min(4096, max_l), #min(6000, 2 * len(input_ids[0])),  # or another value based on your needs
                 temperature=0.7,
-                repetition_penalty=1.0,
+                repetition_penalty=1.1,
                 no_repeat_ngram_size=5,
                 top_p=0.7,
                 top_k=50,

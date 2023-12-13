@@ -1,14 +1,15 @@
 import json
 import os
 from pathlib import Path
-
+import time
 import inquirer
 import typer
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt, Confirm
 import argparse
 import logging
-
+from rlcard.agents import CFRAgent
+        
 import util
 from model import get_all_embeddings, get_all_llms
 from setting import Settings, get_all_model_settings, load_model_setting
@@ -122,6 +123,10 @@ def run(args):
 
     if args.rule_model == 'cfr':
         rule_model = models.load('leduc-holdem-cfr').agents[0]
+    elif args.rule_model == 'cfrstrong':
+        print("strong cft model start!")
+        rule_model = CFRAgent(env, os.path.join('./models', 'cfr_strong_model'))
+        rule_model.load()
     else:
         import torch
         rule_model = torch.load(os.path.join('./models', 'leduc_holdem_'+args.rule_model+'_result/model.pth'), map_location='cpu')
@@ -146,11 +151,12 @@ def run(args):
 
                 # print("Turn:" + str(env.game.whose_turn))
                 console.print("Player:" + str(env.get_player_id()))
+                #print("llm model is: ", ctx.robot_agents[args.user_index].name)
                 idx = env.get_player_id()
                 if round == 0:
                     start_idx = idx
                 if args.user_index == idx and args.user:
-                    print("that branch")
+                    print("rule model turn")
                     console.print(env.get_state(env.get_player_id())['raw_obs'], style="green")
                     act,_ = rule_model.eval_step(env.get_state(env.get_player_id()))
                     act = env._decode_action(act)
@@ -170,7 +176,7 @@ def run(args):
                          f"{ctx.robot_agents[args.user_index].name} have the observation: {env.get_state(env.get_player_id())['raw_obs']}, and try to take action: {act}.")
 
                 else:
-                    print("this branch")
+                    print("llm turn")
                     amy = ctx.robot_agents[idx]
                     amy_index = env.get_player_id()
                     amy_obs = env.get_state(env.get_player_id())['raw_obs']
@@ -179,7 +185,7 @@ def run(args):
                     amy_obs['opponent_rest_chips'] = chips[(idx+1)%args.agents_num]
                     valid_action_list = env.get_state(env.get_player_id())['raw_legal_actions']
                     opponent_name  = ctx.robot_agents[(idx+1)%args.agents_num].name
-                    print(opponent_name) 
+                    #print("opponent_name is ",opponent_name) 
 
                     if  args.verbose_print:
                         console.print(amy_obs, style="green")
@@ -234,13 +240,13 @@ if __name__ == "__main__":
     parser.add_argument("--game_config", default="./game_config/leduc_limit.json", help="./game_config/leduc_limit.json, ./game_config/limit_holdem.json, ./game_config/coup.json")
     parser.add_argument("--seed", type=int, default=1, help="random_seed")
     parser.add_argument("--llm", default="openai-gpt-4-0613", help="environment flag, openai-gpt-4-0613 or openai-gpt-3.5-turbo")
-    parser.add_argument("--rule_model", default="cfr", help="rule model: cfr or nfsp or dqn or dmc")
+    parser.add_argument("--rule_model", default="cfr", help="rule model: cfr or nfsp or dqn or dmc or cfrstrong")
     parser.add_argument("--mode", default="second_tom", help="inference mode: normal or first_tom or second_tom")
     parser.add_argument("--agents_num", type=int, default=2)
     parser.add_argument("--user", action="store_true", help="one of the agents is baseline mode, e.g. cfr, nfsp")
     parser.add_argument("--verbose_print", action="store_true")
     parser.add_argument("--user_index", type=int, default=1, help="user position: 0 or 1")
-    parser.add_argument("--game_num", type=int, default=50)
+    parser.add_argument("--game_num", type=int, default=1000)
     parser.add_argument("--random_seed", action="store_true")
     parser.add_argument("--no_hindsight_obs", action="store_true")
 

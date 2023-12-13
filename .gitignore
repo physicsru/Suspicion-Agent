@@ -4,3 +4,8 @@ __pycache__
 .devcontainer/
 memory_data
 *.log
+*.out
+memory_data*
+*json
+*logsource
+base
